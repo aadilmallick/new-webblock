@@ -132,11 +132,16 @@ export class TabModel {
 
   async moveToIndex(index: number) {
     if (!this.tab?.id) throw new Error("Tab id not found");
-    await chrome.tabs.move(this.tab.id, { index });
+    return await chrome.tabs.move(this.tab.id, { index });
   }
 
   async remove() {
     if (!this.tab?.id) throw new Error("Tab id not found");
     await chrome.tabs.remove(this.tab.id);
+  }
+
+  async changeUrl(url: string) {
+    if (!this.tab?.id) throw new Error("Tab id not found");
+    return await chrome.tabs.update(this.tab.id, { url });
   }
 }

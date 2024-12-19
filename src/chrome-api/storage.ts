@@ -31,7 +31,7 @@ export abstract class ChromeStorage<
     return data as T;
   }
 
-  async getAllData() {
+  private async getAllData() {
     const data = (await this.storage.get(null)) as unknown as T;
     return data;
   }

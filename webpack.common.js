@@ -7,6 +7,7 @@ module.exports = {
   entry: {
     popup: path.resolve("src/popup/popup.tsx"),
     offscreen: path.resolve("src/offscreen/offscreen.tsx"),
+    blocked: path.resolve("src/options/blocked.tsx"),
     options: path.resolve("src/options/options.tsx"),
     background: path.resolve("src/background/background.ts"),
     contentScript: path.resolve("src/contentScript/contentScript.tsx"),
@@ -43,7 +44,7 @@ module.exports = {
         },
       ],
     }),
-    ...getHtmlPlugins(["popup", "options", "offscreen"]),
+    ...getHtmlPlugins(["popup", "options", "offscreen", "blocked"]),
   ],
   output: {
     filename: "[name].js",

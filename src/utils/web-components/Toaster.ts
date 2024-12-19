@@ -78,6 +78,7 @@ class Toast {
 export default class Toaster extends WebComponent<typeof observedAttributes> {
   private position: ToastManagerOptions["position"];
   private timeout: number;
+  private _toastContainer: HTMLElement;
   constructor() {
     super({
       templateId: "toaster-element",
@@ -86,6 +87,17 @@ export default class Toaster extends WebComponent<typeof observedAttributes> {
     this.position = (this.dataset.position ||
       "bottom-right") as ToastManagerOptions["position"];
     this.timeout = (this.dataset.timeout || 3000) as number;
+  }
+
+  static createToaster(options: ToastManagerOptions) {
+    const toaster = new Toaster();
+    toaster.position = options.position || "bottom-right";
+    toaster.timeout = options.timeout || 3000;
+    return toaster;
+  }
+
+  public get toastContainer() {
+    return this._toastContainer || this.$(".toast-container");
   }
 
   // region Overrides
@@ -105,7 +117,10 @@ export default class Toaster extends WebComponent<typeof observedAttributes> {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.$(".toast-container")?.classList.add(this.position);
+    if (this.$(".toast-container")) {
+      this._toastContainer = this.$(".toast-container");
+    }
+    this.toastContainer?.classList.add(this.position);
   }
 
   static get observedAttributes() {
@@ -224,7 +239,6 @@ export default class Toaster extends WebComponent<typeof observedAttributes> {
 
   static toast(message: string, type: ToastType = "default") {
     const toasterElement = document.querySelector("toaster-element") as Toaster;
-    console.log(toasterElement);
     if (!toasterElement) {
       throw new Error("Toaster element not found");
     }
@@ -237,7 +251,7 @@ export default class Toaster extends WebComponent<typeof observedAttributes> {
       type,
       duration: this.timeout,
     });
-    this.$(".toast-container").appendChild(toast.element);
+    this.toastContainer.appendChild(toast.element);
     toast.show();
   }
 

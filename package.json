@@ -1,6 +1,6 @@
 {
   "name": "react-chrome-extension",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "react chrome extension template",
   "scripts": {
     "start": "webpack --watch --progress --config webpack.dev.js",
