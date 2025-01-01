@@ -132,6 +132,19 @@ export class AppManager {
               />
             </div>
           </div>
+          <div>
+            <select
+              name="matchoptions"
+              id="matchoptions"
+              required
+              className="border border-gray-300 rounded-md w-full p-1"
+            >
+              <option value="match-domain" selected>Match Domain</option>
+              <option value="match-path">Match Path</option>
+              <option value="match-exact">Match Exact</option>
+              <option value="match-query">Match Query</option>
+            </select>
+          </div>
           <button
             type="submit"
             class="bg-black text-white px-3 py-2 rounded w-full"
@@ -149,7 +162,7 @@ export class AppManager {
         Add Focus Group
       </button>
       <div class="focus-group-list mt-2 space-y-4"></div>
-      <dialog id="add-focus-group">
+      <dialog id="add-focus-group" class="p-4 rounded">
         <h3>Add focus group</h3>
         <form>
           <div class="form-control">
@@ -273,14 +286,14 @@ export class AppManager {
       if (propertyChanged === "scheduledBlocks") {
         const list = this.$schedule("ul");
         list.innerHTML = "";
-        const listElements = newValue.map((blocksite) => {
-          const listElement = html`<li class="url-item">
-            ${blocksite.url}<button
-              class="trashcan"
-              data-site="${blocksite.url}"
-            >
-              🗑️
-            </button>
+        const listElements = (newValue as BlockSite[]).map((blocksite) => {
+          const timeRangeString = `${blocksite.schedule.startTime} - ${blocksite.schedule.endTime}`;
+          const listElement = html`<li
+            class="url-item flex items-center justify-between"
+          >
+            <span>${blocksite.url}</span>
+            <span>${timeRangeString}</span>
+            <button class="trashcan" data-site="${blocksite.url}">🗑️</button>
           </li>`;
           return DOM.createDomElement(listElement);
         });
@@ -422,7 +435,26 @@ export class AppManager {
         const endTime = (
           dialogSchedule.querySelector("#endTime") as HTMLInputElement
         ).value;
-        await onScheduleAdd(url, startTime, endTime);
+        const matchOptionValue = (
+          dialogSchedule.querySelector("#matchoptions") as HTMLSelectElement
+        ).value;
+        if (!url || !matchOptionValue) {
+          this.toaster.danger("URL is required");
+          dialogSchedule.close();
+          return;
+        }
+        if (url.startsWith("chrome://")) {
+          this.toaster.danger("Cannot add chrome:// URLs");
+          dialogSchedule.close();
+          return;
+        }
+        const urlPattern = URLMatcherModel.generateUrlPattern(url, {
+          matchDomain: matchOptionValue === "match-domain",
+          matchPath: matchOptionValue === "match-path",
+          matchExact: matchOptionValue === "match-exact",
+          matchQuery: matchOptionValue === "match-query",
+        });
+        await onScheduleAdd(urlPattern, startTime, endTime);
         dialogSchedule.close();
       });
 

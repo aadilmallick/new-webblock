@@ -25,9 +25,10 @@ async function handleBlockSite(currentTab: TabModel) {
   const currentTime = new Date();
   const blockSites = await blocksSitesStorage.get("blockSites");
   const currentUrl = new URL(currentTab.tab.url).origin;
-  const site = blockSites.find(
-    (site) => new URL(site.url).origin === currentUrl
-  );
+  const site = blockSites.find((site) => {
+    const match = URLMatcherModel.isMatch(currentTab.tab.url, site.url);
+    return match;
+  });
   if (!site) {
     return;
   }

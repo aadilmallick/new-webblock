@@ -35,12 +35,12 @@ appManager.addEventListeners({
     if (startDate > endDate) {
       throw new Error("Start time cannot be greater than end time");
     }
-    const urlToAdd = new URL(url).origin;
-    if (!BlockScheduler.isValidUrl(urlToAdd)) {
-      throw new Error("Invalid URL");
-    }
+    // const urlToAdd = new URL(url).origin;
+    // if (!BlockScheduler.isValidUrl(urlToAdd)) {
+    //   throw new Error("Invalid URL");
+    // }
     const scheduledBlockSites = await StorageHandler.addScheduledBlockSite(
-      urlToAdd,
+      url,
       startDate,
       endDate
     );
