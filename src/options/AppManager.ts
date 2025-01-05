@@ -6,8 +6,11 @@ import {
   StorageHandler,
 } from "../background/controllers/storage";
 import { Extension } from "../chrome-api/extension";
-import Tabs from "../chrome-api/tabs";
-import { createReactiveProxyMultipleProps } from "../utils/assorted-vanillajs/Proxies";
+import { TabGroupModel, TabGroups, Tabs } from "../chrome-api/tabs";
+import {
+  createReactiveProxy,
+  createReactiveProxyMultipleProps,
+} from "../utils/assorted-vanillajs/Proxies";
 import { TextFragmentURLManager } from "../utils/assorted-vanillajs/TextFragmentManager";
 import { DateModel, DOM, html } from "../utils/Dom";
 import Toaster from "../utils/web-components/Toaster";
@@ -77,6 +80,7 @@ function createSelectorAll(
 }
 
 export class AppManager {
+  // region HTML
   private permanentSchedule = html`
     <div class="permanent-schedule">
       <button class="bg-green-500 text-white px-4 py-2 rounded-lg">
@@ -269,16 +273,53 @@ export class AppManager {
     </div>
   `;
 
+  private importFocusGroup = html`
+    <div class="importfocusgroup">
+      <button class="bg-green-500 text-white px-4 py-2 rounded-lg">
+        Import Focus Group
+      </button>
+      <dialog id="import-focus-group" class="p-4 rounded space-y-2">
+        <h3 class="text-lg font-bold">Import focus group</h3>
+        <form class="space-y-2">
+          <select
+            id="import-select"
+            class="p-1 w-full border-2 border-gray-300 rounded-lg"
+            required
+          ></select>
+          <select
+            name="matchoptions"
+            id="matchoptions"
+            required
+            class="p-1 w-full border-2 border-gray-300 rounded-lg"
+          >
+            <option value="match-domain" selected>Match Domain</option>
+            <option value="match-path">Match Path</option>
+            <option value="match-exact">Match Exact</option>
+            <option value="match-query">Match Query</option>
+          </select>
+          <button
+            type="submit"
+            class="bg-black text-white px-3 py-2 rounded w-full"
+          >
+            Import
+          </button>
+        </form>
+      </dialog>
+    </div>
+  `;
+
   private appString = html`
     <main class="app-container">
       <h1 class="text-2xl mb-4">Options</h1>
       <div class="grid lg:grid-cols-3 gap-4 md:grid-cols-1">
         ${this.permanentSchedule} ${this.schedule} ${this.focusGroup}
-        ${this.incognito}
+        ${this.incognito} ${this.importFocusGroup}
       </div>
       <toaster-element data-position="top-right"></toaster-element>
     </main>
   `;
+
+  // region constructor
 
   private abortControllers = {
     permanentScheduleController: new AbortController(),
@@ -290,6 +331,7 @@ export class AppManager {
   private $permSchedule: InstanceType<typeof HTMLElement>["querySelector"];
   private $schedule: InstanceType<typeof HTMLElement>["querySelector"];
   private $focusGroup: InstanceType<typeof HTMLElement>["querySelector"];
+  private $importFocusGroup: InstanceType<typeof HTMLElement>["querySelector"];
   private $incognito: InstanceType<typeof HTMLElement>["querySelector"];
   private $$focusGroup: ReturnType<typeof createSelectorAll>;
   private $: (
@@ -305,10 +347,28 @@ export class AppManager {
     this.$incognito = this.$(".incognito");
     this.$schedule = this.$(".schedule");
     this.$focusGroup = this.$(".focusgroup");
+    this.$importFocusGroup = this.$(".importfocusgroup");
     this.$$focusGroup = this.$$(".focusgroup");
     this.toaster = this.App.querySelector("toaster-element") as Toaster;
     this.populateData();
   }
+
+  tabGroupsProxy = createReactiveProxy(
+    "tabGroups",
+    [] as TabGroupModel[],
+    (newValue) => {
+      const groupsSelect = this.$importFocusGroup("select");
+      groupsSelect.innerHTML = "";
+      const optionsElements = newValue.map((group) => {
+        return DOM.createDomElement(
+          html`<option value="${group.group.id}">${group.group.title}</option>`
+        );
+      });
+      DOM.addElementsToContainer(groupsSelect, optionsElements);
+    }
+  );
+
+  // region app proxy
 
   appProxy = createReactiveProxyMultipleProps(
     {
@@ -452,6 +512,8 @@ export class AppManager {
     }
   );
 
+  // region event listeners
+
   addEventListeners({
     onFocusGroupAdd,
     onPermScheduleAdd,
@@ -485,6 +547,50 @@ export class AppManager {
       } finally {
         dialogPerm.close();
       }
+    });
+
+    this.$importFocusGroup("dialog").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const select = this.$importFocusGroup(
+        "#import-select"
+      ) as HTMLSelectElement;
+      const groupId = select.value;
+
+      const matchoptions = this.$importFocusGroup(
+        "#matchoptions"
+      ) as HTMLSelectElement;
+      const matchOptionValue = matchoptions.value;
+      if (!groupId) {
+        this.toaster.danger("No group selected");
+        return;
+      }
+      if (!matchOptionValue) {
+        this.toaster.danger("No match option selected");
+        return;
+      }
+      const group = this.tabGroupsProxy.tabGroups.find(
+        (group) => group.id === Number(groupId)
+      );
+      if (!group) {
+        this.toaster.danger("Group not found");
+        return;
+      }
+      const tabs = await group.getTabs();
+      const focusGroup = await StorageHandler.addFocusGroupWithLinks(
+        group.group.title,
+        tabs.map((tab) => {
+          const urlPattern = URLMatcherModel.generateUrlPattern(tab.url, {
+            matchDomain: matchOptionValue === "match-domain",
+            matchPath: matchOptionValue === "match-path",
+            matchExact: matchOptionValue === "match-exact",
+            matchQuery: matchOptionValue === "match-query",
+          });
+          return urlPattern;
+        })
+      );
+      this.appProxy.focusGroups = focusGroup;
+      this.toaster.success("Focus group imported");
+      this.$importFocusGroup("dialog").close();
     });
 
     const dialogIncognito = this.$incognito("dialog");
@@ -627,6 +733,8 @@ export class AppManager {
         addFocusLinkDialog.close();
       });
 
+    // region show modal
+
     this.$permSchedule("button").addEventListener("click", async () => {
       dialogPerm.showModal();
     });
@@ -649,6 +757,11 @@ export class AppManager {
 
     this.$focusGroup("button").addEventListener("click", async () => {
       dialogFocusGroup.showModal();
+    });
+
+    this.$importFocusGroup("button").addEventListener("click", async () => {
+      const dialog = this.$importFocusGroup("dialog");
+      dialog.showModal();
     });
 
     // region list deletions
@@ -803,6 +916,8 @@ export class AppManager {
     });
   }
 
+  // region populate data
+
   async populateData() {
     const permanentBlockedSites =
       await StorageHandler.getPermanentlyBlockedSites();
@@ -813,5 +928,14 @@ export class AppManager {
     this.appProxy.focusGroups = focusGroups;
     const incognitoBlockedSites = await StorageHandler.getIncognitoBlockSites();
     this.appProxy.incognitoBlocks = incognitoBlockedSites;
+    this.initTabGroups();
+  }
+
+  private initTabGroups() {
+    TabGroups.getAll().then((tabGroups) => {
+      console.log(tabGroups);
+      const groups = tabGroups.map((group) => new TabGroupModel(group));
+      this.tabGroupsProxy.tabGroups = groups;
+    });
   }
 }

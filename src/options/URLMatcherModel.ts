@@ -11,6 +11,9 @@ type MatchOptions = {
   matchQuery?: boolean;
 };
 
+type thing = keyof MatchOptions;
+const bruh: thing = "matchDomain";
+
 export class URLMatcherModel {
   static getURLFromPattern(pattern: string): string {
     return pattern.replace("*", "");

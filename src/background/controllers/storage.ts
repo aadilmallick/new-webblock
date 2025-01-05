@@ -181,6 +181,38 @@ export class StorageHandler {
     return focusGroups;
   }
 
+  static async addFocusGroupWithLinks(
+    groupName: string,
+    urls: string[]
+  ): Promise<FocusGroup[] | null> {
+    const focusGroups = await focusModeStorage.get("focusGroups");
+    const foundFocusGroupIndex = focusGroups.findIndex(
+      (group) => group.name === groupName
+    );
+    // group already exists, just add link to group
+    if (foundFocusGroupIndex > -1) {
+      const linksSet = new Set(focusGroups[foundFocusGroupIndex].links);
+      urls.forEach((url) => linksSet.add(url));
+      focusGroups[foundFocusGroupIndex].links = Array.from(linksSet);
+      await focusModeStorage.set("focusGroups", focusGroups);
+      return focusGroups;
+    }
+    const newFocusGroup = {
+      id: crypto.randomUUID(),
+      name: groupName,
+      links: urls,
+      isFocusing: false,
+    };
+    focusGroups.push(newFocusGroup);
+    await focusModeStorage.set("focusGroups", focusGroups);
+    return focusGroups;
+  }
+
+  static async getFocusGroupByName(groupName: string) {
+    const focusGroups = await focusModeStorage.get("focusGroups");
+    return focusGroups.find((group) => group.name === groupName);
+  }
+
   static async removeLinkFromFocusGroup(groupName: string, url: string) {
     const focusGroups = await focusModeStorage.get("focusGroups");
     const foundFocusGroupIndex = focusGroups.findIndex(

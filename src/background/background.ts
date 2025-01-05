@@ -1,6 +1,6 @@
 import { Extension } from "../chrome-api/extension";
 import { Runtime } from "../chrome-api/runtime";
-import Tabs, { TabModel } from "../chrome-api/tabs";
+import { Tabs, TabModel } from "../chrome-api/tabs";
 import { URLMatcherModel } from "../options/URLMatcherModel";
 import { DateModel } from "../utils/Dom";
 import {
