@@ -145,12 +145,12 @@ export class AppManager {
               />
             </div>
           </div>
-          <div>
+          <div class="space-y-2">
             <select
               name="matchoptions"
               id="matchoptions"
               required
-              className="border border-gray-300 rounded-md w-full p-1"
+              class="border border-gray-300 rounded-md w-full p-1"
             >
               <option value="match-domain" selected>Match Domain</option>
               <option value="match-path">Match Path</option>
@@ -382,11 +382,11 @@ export class AppManager {
         const list = this.$permSchedule("ul");
         list.innerHTML = "";
         const listElements = newValue.map((blocksite) => {
+          const urlPattern = URLMatcherModel.generateUrlPattern(blocksite.url, {
+            matchDomain: true,
+          });
           const listElement = html`<li class="url-item">
-            ${blocksite.url}<button
-              class="trashcan"
-              data-site="${blocksite.url}"
-            >
+            ${urlPattern}<button class="trashcan" data-site="${urlPattern}">
               🗑️
             </button>
           </li>`;
@@ -538,9 +538,16 @@ export class AppManager {
         this.toaster.danger("URL is required");
         return;
       }
+      const urlPattern = URLMatcherModel.generateUrlPattern(url, {
+        matchDomain: true,
+      });
+      console.log(urlPattern);
       try {
-        await onPermScheduleAdd(url);
+        await onPermScheduleAdd(urlPattern);
         this.toaster.success("URL added to permanent schedule");
+        (
+          dialogPerm.querySelector("input[type='url']") as HTMLInputElement
+        ).value = "";
       } catch (e) {
         console.error(e);
         this.toaster.danger(e.message);
@@ -623,6 +630,10 @@ export class AppManager {
       this.appProxy.incognitoBlocks =
         await StorageHandler.getIncognitoBlockSites();
       dialogIncognito.close();
+      (
+        dialogIncognito.querySelector("input[type='url']") as HTMLInputElement
+      ).value = "";
+      this.toaster.success("URL added to incognito block list");
     });
 
     // schedule
@@ -660,6 +671,9 @@ export class AppManager {
         });
         await onScheduleAdd(urlPattern, startTime, endTime);
         dialogSchedule.close();
+        (
+          dialogSchedule.querySelector("input[type='url']") as HTMLInputElement
+        ).value = "";
       });
 
     // region focus group listener
@@ -731,6 +745,8 @@ export class AppManager {
         );
         this.appProxy.focusGroups = newFocusGroups;
         addFocusLinkDialog.close();
+        (addFocusLinkDialog.querySelector("#url") as HTMLInputElement).value =
+          "";
       });
 
     // region show modal

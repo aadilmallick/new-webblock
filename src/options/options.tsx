@@ -22,11 +22,10 @@ appManager.addEventListeners({
     appManager.appProxy.focusGroups = newFocusGroups;
   },
   onPermScheduleAdd: async (url) => {
-    const urlToAdd = new URL(url).origin;
-    if (!BlockScheduler.isValidUrl(urlToAdd)) {
+    if (!BlockScheduler.isValidUrl(url)) {
       throw new Error("Invalid URL");
     }
-    const newBlockSites = await StorageHandler.addPermanentBlockSite(urlToAdd);
+    const newBlockSites = await StorageHandler.addPermanentBlockSite(url);
     appManager.appProxy.permanentBlocks = newBlockSites;
   },
   onScheduleAdd: async (url, startTime, endTime) => {
