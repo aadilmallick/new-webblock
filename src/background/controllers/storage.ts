@@ -19,6 +19,7 @@ export interface FocusGroup {
 
 export const blocksSitesStorage = new LocalStorage({
   blockSites: [] as BlockSite[],
+  incognitoBlockSites: [] as BlockSite[],
 });
 
 export const focusModeStorage = new LocalStorage({
@@ -55,6 +56,33 @@ export class StorageHandler {
     return (await blocksSitesStorage.get("blockSites")).filter(
       (site) => site.schedule
     );
+  }
+
+  static async getIncognitoBlockSites() {
+    return await blocksSitesStorage.get("incognitoBlockSites");
+  }
+
+  static async addIncognitoBlockSite(url: string) {
+    if (!BlockScheduler.isValidUrl(url)) {
+      throw new Error("Invalid URL");
+    }
+
+    const blockSites = await blocksSitesStorage.get("incognitoBlockSites");
+    const duplicateUrl = blockSites.find((site) => site.url === url);
+    if (duplicateUrl) {
+      throw new Error("Site already exists");
+    }
+    blockSites.push({ url });
+
+    await blocksSitesStorage.set("incognitoBlockSites", blockSites);
+    return blockSites;
+  }
+
+  static async removeIncognitoBlockSite(url: string) {
+    const blockSites = await blocksSitesStorage.get("incognitoBlockSites");
+    const newBlockSites = blockSites.filter((site) => site.url !== url);
+    await blocksSitesStorage.set("incognitoBlockSites", newBlockSites);
+    return newBlockSites;
   }
 
   static async getPermanentlyBlockedSites() {

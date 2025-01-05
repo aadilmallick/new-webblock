@@ -1,3 +1,4 @@
+import { Extension } from "../chrome-api/extension";
 import { Runtime } from "../chrome-api/runtime";
 import Tabs, { TabModel } from "../chrome-api/tabs";
 import { URLMatcherModel } from "../options/URLMatcherModel";
@@ -20,6 +21,26 @@ Runtime.onInstall({
     await StorageHandler.resetAllFocus();
   },
 });
+
+async function handleincognitoBlock(currentTab: TabModel) {
+  const inIncognito = await Extension.inIncognitoWindow();
+  console.log("Incognito", inIncognito);
+  if (!inIncognito) {
+    return;
+  }
+  const currentTime = new Date();
+  const blockSites = await blocksSitesStorage.get("incognitoBlockSites");
+  const site = blockSites.find((site) => {
+    const match = URLMatcherModel.isMatch(currentTab.tab.url, site.url);
+    return match;
+  });
+  if (!site) {
+    return;
+  }
+
+  console.log("Blocking site: permanent");
+  await currentTab.changeUrl(chrome.runtime.getURL("blocked.html"));
+}
 
 async function handleBlockSite(currentTab: TabModel) {
   const currentTime = new Date();
@@ -81,9 +102,8 @@ Tabs.Events.onTabHighlighted(async ({ tabIds }) => {
 
   if (BlockScheduler.isValidUrl(currentTab.tab.url)) {
     await handleBlockSite(currentTab);
-  }
-  if (BlockScheduler.isValidUrl(currentTab.tab.url)) {
     await handleFocusMode(currentTab);
+    await handleincognitoBlock(currentTab);
   }
 });
 
@@ -93,8 +113,7 @@ Tabs.Events.onTabNavigateComplete(async (tabId, tab) => {
 
   if (BlockScheduler.isValidUrl(currentTab.tab.url)) {
     await handleBlockSite(currentTab);
-  }
-  if (BlockScheduler.isValidUrl(currentTab.tab.url)) {
     await handleFocusMode(currentTab);
+    await handleincognitoBlock(currentTab);
   }
 });

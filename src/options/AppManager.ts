@@ -5,11 +5,20 @@ import {
   focusModeStorage,
   StorageHandler,
 } from "../background/controllers/storage";
+import { Extension } from "../chrome-api/extension";
+import Tabs from "../chrome-api/tabs";
 import { createReactiveProxyMultipleProps } from "../utils/assorted-vanillajs/Proxies";
+import { TextFragmentURLManager } from "../utils/assorted-vanillajs/TextFragmentManager";
 import { DateModel, DOM, html } from "../utils/Dom";
 import Toaster from "../utils/web-components/Toaster";
 import { Switch } from "./Switch";
 import { URLMatcherModel } from "./URLMatcherModel";
+
+let manageExtensionUrl = `chrome://extensions/?id=${chrome.runtime.id}`;
+manageExtensionUrl = TextFragmentURLManager.createFragmentURL(
+  manageExtensionUrl,
+  "Allow in Incognito"
+);
 
 Toaster.registerSelf();
 
@@ -156,6 +165,44 @@ export class AppManager {
     </div>
   `;
 
+  private incognito = html`
+    <div class="incognito">
+      <button class="bg-green-500 text-white px-4 py-2 rounded-lg">
+        Add Incognito Block
+      </button>
+      <ul class="incognito-list"></ul>
+
+      <dialog class="p-4 rounded">
+        <h3>Add Schedule Block Site</h3>
+        <form class="space-y-2">
+          <div class="form-control">
+            <label for="url" class="block text-sm">URL</label>
+            <input type="url" name="url" id="url" class="p-1 border w-full" />
+          </div>
+          <div>
+            <select
+              name="matchoptions"
+              id="matchoptions"
+              required
+              className="border border-gray-300 rounded-md w-full p-1"
+            >
+              <option value="match-domain" selected>Match Domain</option>
+              <option value="match-path">Match Path</option>
+              <option value="match-exact">Match Exact</option>
+              <option value="match-query">Match Query</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            class="bg-black text-white px-3 py-2 rounded w-full"
+          >
+            Add
+          </button>
+        </form>
+      </dialog>
+    </div>
+  `;
+
   private focusGroup = html`
     <div class="focusgroup">
       <button class="bg-green-500 text-white px-4 py-2 rounded-lg">
@@ -227,6 +274,7 @@ export class AppManager {
       <h1 class="text-2xl mb-4">Options</h1>
       <div class="grid lg:grid-cols-3 gap-4 md:grid-cols-1">
         ${this.permanentSchedule} ${this.schedule} ${this.focusGroup}
+        ${this.incognito}
       </div>
       <toaster-element data-position="top-right"></toaster-element>
     </main>
@@ -242,6 +290,7 @@ export class AppManager {
   private $permSchedule: InstanceType<typeof HTMLElement>["querySelector"];
   private $schedule: InstanceType<typeof HTMLElement>["querySelector"];
   private $focusGroup: InstanceType<typeof HTMLElement>["querySelector"];
+  private $incognito: InstanceType<typeof HTMLElement>["querySelector"];
   private $$focusGroup: ReturnType<typeof createSelectorAll>;
   private $: (
     string: string
@@ -253,6 +302,7 @@ export class AppManager {
     this.$ = createSelector.bind(null, this.App);
     this.$$ = createSelectorAll.bind(null, this.App);
     this.$permSchedule = this.$(".permanent-schedule");
+    this.$incognito = this.$(".incognito");
     this.$schedule = this.$(".schedule");
     this.$focusGroup = this.$(".focusgroup");
     this.$$focusGroup = this.$$(".focusgroup");
@@ -265,6 +315,7 @@ export class AppManager {
       permanentBlocks: [] as BlockSite[],
       scheduledBlocks: [] as BlockSite[],
       focusGroups: [] as FocusGroup[],
+      incognitoBlocks: [] as BlockSite[],
     },
     (state, propertyChanged, newValue) => {
       if (propertyChanged === "permanentBlocks") {
@@ -294,6 +345,22 @@ export class AppManager {
             <span>${blocksite.url}</span>
             <span>${timeRangeString}</span>
             <button class="trashcan" data-site="${blocksite.url}">🗑️</button>
+          </li>`;
+          return DOM.createDomElement(listElement);
+        });
+        DOM.addElementsToContainer(list, listElements);
+      }
+      if (propertyChanged === "incognitoBlocks") {
+        const list = this.$incognito("ul");
+        list.innerHTML = "";
+        const listElements = newValue.map((blocksite) => {
+          const listElement = html`<li class="url-item">
+            ${blocksite.url}<button
+              class="trashcan"
+              data-site="${blocksite.url}"
+            >
+              🗑️
+            </button>
           </li>`;
           return DOM.createDomElement(listElement);
         });
@@ -400,7 +467,6 @@ export class AppManager {
   }) {
     // permanent schedule
     const dialogPerm = this.$permSchedule("dialog");
-    console.log(dialogPerm);
     dialogPerm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const url = (
@@ -419,6 +485,38 @@ export class AppManager {
       } finally {
         dialogPerm.close();
       }
+    });
+
+    const dialogIncognito = this.$incognito("dialog");
+    dialogIncognito.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const url = (
+        dialogIncognito.querySelector("input[type='url']") as HTMLInputElement
+      ).value;
+      const matchOptionValue = (
+        dialogIncognito.querySelector("#matchoptions") as HTMLSelectElement
+      ).value;
+      if (!url || !matchOptionValue) {
+        this.toaster.danger("URL is required");
+        dialogIncognito.close();
+        return;
+      }
+      if (url.startsWith("chrome://")) {
+        this.toaster.danger("Cannot add chrome:// URLs");
+        dialogIncognito.close();
+        return;
+      }
+      const urlPattern = URLMatcherModel.generateUrlPattern(url, {
+        matchDomain: matchOptionValue === "match-domain",
+        matchPath: matchOptionValue === "match-path",
+        matchExact: matchOptionValue === "match-exact",
+        matchQuery: matchOptionValue === "match-query",
+      });
+      console.log(urlPattern);
+      await StorageHandler.addIncognitoBlockSite(urlPattern);
+      this.appProxy.incognitoBlocks =
+        await StorageHandler.getIncognitoBlockSites();
+      dialogIncognito.close();
     });
 
     // schedule
@@ -533,6 +631,18 @@ export class AppManager {
       dialogPerm.showModal();
     });
 
+    this.$incognito("button").addEventListener("click", async () => {
+      const incognitoAccessAllowed = await Extension.isAllowedIncognitoAccess();
+      if (!incognitoAccessAllowed) {
+        Tabs.createTab({
+          url: manageExtensionUrl,
+          active: true,
+        });
+        return;
+      }
+      dialogIncognito.showModal();
+    });
+
     this.$schedule("button").addEventListener("click", async () => {
       dialogSchedule.showModal();
     });
@@ -560,6 +670,27 @@ export class AppManager {
           (blocksite) => blocksite.url !== site
         );
         this.toaster.success("Site removed from permanent block list");
+      }
+    });
+
+    const incognitoBlockedList = this.$incognito("ul");
+    incognitoBlockedList.addEventListener("click", async (e) => {
+      if (
+        e.target instanceof HTMLButtonElement &&
+        e.target.matches(".trashcan")
+      ) {
+        const site = e.target.getAttribute("data-site");
+        console.log(site);
+        if (!site) return;
+        const confirm = window.confirm(
+          "Are you sure you want to remove this site from the incognito block list?"
+        );
+        if (!confirm) return;
+        await StorageHandler.removeIncognitoBlockSite(site);
+        this.appProxy.incognitoBlocks = this.appProxy.incognitoBlocks.filter(
+          (blocksite) => blocksite.url !== site
+        );
+        this.toaster.success("Site removed from incognito block list");
       }
     });
 
@@ -680,5 +811,7 @@ export class AppManager {
     this.appProxy.scheduledBlocks = scheduledBlockedSites;
     const focusGroups = await focusModeStorage.get("focusGroups");
     this.appProxy.focusGroups = focusGroups;
+    const incognitoBlockedSites = await StorageHandler.getIncognitoBlockSites();
+    this.appProxy.incognitoBlocks = incognitoBlockedSites;
   }
 }
