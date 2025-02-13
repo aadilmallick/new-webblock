@@ -781,6 +781,10 @@ export class AppManager {
     });
 
     // region list deletions
+    const delay = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    const blockNums = 50;
+
     const permBlockedList = this.$permSchedule("ul");
     permBlockedList.addEventListener("click", async (e) => {
       if (
@@ -790,10 +794,21 @@ export class AppManager {
         const site = e.target.getAttribute("data-site");
         console.log(site);
         if (!site) return;
-        const confirm = window.confirm(
-          "Are you sure you want to remove this site from the permanent block list?"
-        );
-        if (!confirm) return;
+        e.target.disabled = true;
+        for (let i = 0; i < blockNums; i++) {
+          await delay(500);
+          const confirm = window.confirm(
+            `Are you sure you want to remove this site from the permanent block list? (${
+              i + 1
+            }/${blockNums})`
+          );
+          await delay(500);
+
+          if (!confirm) {
+            e.target.disabled = false;
+            return;
+          }
+        }
         await StorageHandler.removeBlockSite(site);
         this.appProxy.permanentBlocks = this.appProxy.permanentBlocks.filter(
           (blocksite) => blocksite.url !== site
@@ -811,10 +826,23 @@ export class AppManager {
         const site = e.target.getAttribute("data-site");
         console.log(site);
         if (!site) return;
-        const confirm = window.confirm(
-          "Are you sure you want to remove this site from the incognito block list?"
-        );
-        if (!confirm) return;
+        e.target.disabled = true;
+
+        for (let i = 0; i < blockNums; i++) {
+          await delay(500);
+
+          const confirm = window.confirm(
+            `Are you sure you want to remove this site from the incognito block list? (${
+              i + 1
+            }/${blockNums})`
+          );
+          await delay(500);
+
+          if (!confirm) {
+            e.target.disabled = false;
+            return;
+          }
+        }
         await StorageHandler.removeIncognitoBlockSite(site);
         this.appProxy.incognitoBlocks = this.appProxy.incognitoBlocks.filter(
           (blocksite) => blocksite.url !== site
@@ -832,10 +860,21 @@ export class AppManager {
         const site = e.target.getAttribute("data-site");
         console.log(site);
         if (!site) return;
-        const confirm = window.confirm(
-          "Are you sure you want to remove this site from the scheduled block list?"
-        );
-        if (!confirm) return;
+        e.target.disabled = true;
+
+        for (let i = 0; i < blockNums; i++) {
+          await delay(500);
+          const confirm = window.confirm(
+            `Are you sure you want to remove this site from the scheduled block list? (${
+              i + 1
+            }/${blockNums})`
+          );
+          await delay(500);
+          if (!confirm) {
+            e.target.disabled = false;
+            return;
+          }
+        }
         await StorageHandler.removeBlockSite(site);
         this.appProxy.scheduledBlocks = this.appProxy.scheduledBlocks.filter(
           (blocksite) => blocksite.url !== site

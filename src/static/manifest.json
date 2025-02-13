@@ -1,7 +1,7 @@
 {
   "name": "Ultimate Web Blocker",
   "description": "A better ultimate web blocker.",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "manifest_version": 3,
   "icons": {
     "16": "icon.png",
