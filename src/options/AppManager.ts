@@ -4,6 +4,7 @@ import {
   FocusGroup,
   focusModeStorage,
   StorageHandler,
+  SyncStorage,
 } from "../background/controllers/storage";
 import { Extension } from "../chrome-api/extension";
 import { TabGroupModel, TabGroups, Tabs } from "../chrome-api/tabs";
@@ -108,6 +109,25 @@ export class AppManager {
           </button>
         </form>
       </dialog>
+    </div>
+  `;
+
+  private customBlockMessage = html`
+    <div class="custom-block-message">
+      <h3 class="text-lg font-bold">Custom Block Message</h3>
+      <p class="text-sm text-gray-500">
+        This message will be displayed on the blocked page.
+      </p>
+      <textarea
+        class="w-full p-2 border border-gray-300 rounded-lg mt-2"
+        rows="4"
+        placeholder="Enter your custom block message here..."
+      ></textarea>
+      <button
+        class="bg-green-500 text-white px-4 py-2 rounded-lg mt-2 save-custom-message"
+      >
+        Save
+      </button>
     </div>
   `;
 
@@ -312,8 +332,12 @@ export class AppManager {
     <main class="app-container">
       <h1 class="text-2xl mb-4">Options</h1>
       <div class="grid lg:grid-cols-3 gap-4 md:grid-cols-1">
-        ${this.permanentSchedule} ${this.schedule} ${this.focusGroup}
-        ${this.incognito} ${this.importFocusGroup}
+        <div class="card">${this.permanentSchedule}</div>
+        <div class="card">${this.schedule}</div>
+        <div class="card">${this.focusGroup}</div>
+        <div class="card">${this.incognito}</div>
+        <div class="card">${this.importFocusGroup}</div>
+        <div class="card lg:col-span-3">${this.customBlockMessage}</div>
       </div>
       <toaster-element data-position="top-right"></toaster-element>
     </main>
@@ -351,6 +375,7 @@ export class AppManager {
     this.$$focusGroup = this.$$(".focusgroup");
     this.toaster = this.App.querySelector("toaster-element") as Toaster;
     this.populateData();
+    this.initCustomBlockMessage();
   }
 
   tabGroupsProxy = createReactiveProxy(
@@ -991,6 +1016,29 @@ export class AppManager {
       console.log(tabGroups);
       const groups = tabGroups.map((group) => new TabGroupModel(group));
       this.tabGroupsProxy.tabGroups = groups;
+    });
+  }
+
+  private async initCustomBlockMessage() {
+    const customBlockMessageContainer = this.App.querySelector(
+      ".custom-block-message"
+    ) as HTMLElement;
+    const textarea = customBlockMessageContainer.querySelector(
+      "textarea"
+    ) as HTMLTextAreaElement;
+    const saveButton = customBlockMessageContainer.querySelector(
+      "button"
+    ) as HTMLButtonElement;
+
+    const savedMessage = await SyncStorage.get("customBlockMessage");
+    if (savedMessage) {
+      textarea.value = savedMessage;
+    }
+
+    saveButton.addEventListener("click", async () => {
+      const message = textarea.value;
+      await SyncStorage.set("customBlockMessage", message);
+      this.toaster.success("Custom block message saved");
     });
   }
 }

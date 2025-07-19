@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  background-color: hsl(210, 20%, 98%);
+}
+
 .app-container {
   width: clamp(300px, 95%, 1280px);
   margin: 0 auto;
@@ -15,32 +19,31 @@
   transition: background-color 0.2s;
   position: relative;
   border-radius: 0.25rem;
+}
 
-  &:hover {
-    background-color: hsla(0, 0%, 45%, 0.75);
-    .trashcan {
-      opacity: 1;
-    }
-  }
+.url-item:hover {
+  background-color: hsla(0, 0%, 45%, 0.75);
+}
+.url-item:hover .trashcan {
+  opacity: 1;
+}
 
-  .trashcan {
-    opacity: 0;
-    transition: opacity 0.2s;
-    position: absolute;
-    border: none;
-    background: none;
-    font-size: 1.2rem;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    &:hover {
-      cursor: pointer;
-    }
-
-    &:disabled {
-      cursor: not-allowed;
-    }
-  }
+.url-item .trashcan {
+  opacity: 0;
+  transition: opacity 0.2s;
+  position: absolute;
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.url-item .trashcan:hover {
+  cursor: pointer;
+}
+.url-item .trashcan:disabled {
+  cursor: not-allowed;
 }
 
 .focus-group-container {
@@ -49,11 +52,11 @@
   border: 1px solid hsl(0, 0%, 90%);
   padding: 0.5rem 0.75rem;
   border-radius: 1rem;
-  span {
-    font-size: 1.2rem;
-    font-weight: bold;
-    display: block;
-  }
+}
+.focus-group-container span {
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: block;
 }
 
 .focus-group {
@@ -112,4 +115,12 @@ input:checked + .slider:before {
   -webkit-transform: translateX(26px);
   -ms-transform: translateX(26px);
   transform: translateX(26px);
+}
+
+.card {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
 }
