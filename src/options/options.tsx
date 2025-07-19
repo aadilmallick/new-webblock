@@ -9,6 +9,7 @@ import "../index.css";
 import { DateModel, DOM, html } from "../utils/Dom";
 import { AppManager } from "./AppManager";
 import "./options.css";
+import { toast } from "./toast";
 
 const appManager = new AppManager();
 
@@ -23,7 +24,8 @@ appManager.addEventListeners({
   },
   onPermScheduleAdd: async (url) => {
     if (!BlockScheduler.isValidUrl(url)) {
-      throw new Error("Invalid URL");
+      toast.danger("Invalid URL");
+      return;
     }
     const newBlockSites = await StorageHandler.addPermanentBlockSite(url);
     appManager.appProxy.permanentBlocks = newBlockSites;
@@ -32,7 +34,8 @@ appManager.addEventListeners({
     const startDate = DateModel.convertTimeToDate(startTime);
     const endDate = DateModel.convertTimeToDate(endTime);
     if (startDate > endDate) {
-      throw new Error("Start time cannot be greater than end time");
+      toast.danger("Start time cannot be greater than end time");
+      return;
     }
     // const urlToAdd = new URL(url).origin;
     // if (!BlockScheduler.isValidUrl(urlToAdd)) {
